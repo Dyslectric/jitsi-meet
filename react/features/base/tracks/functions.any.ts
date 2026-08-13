@@ -219,13 +219,23 @@ export function getLocalJitsiAudioTrackSettings(state: IReduxState) {
             disableNS = false
         } = state['features/base/config'] || {};
 
-        const enableStereo = Boolean(audioQuality?.stereo);
-
+        // Stereo is a conference-wide switch, and it is turned on for screen
+        // share audio — a game or a video really was mixed for two channels,
+        // and ScreenObtainer asks for two on that track by itself. None of that
+        // is true of a microphone: it has one capsule, so the second channel is
+        // a copy of the first that every participant pays to receive, and it is
+        // in a room with speakers in it, so taking away echo cancellation to
+        // flatter music means the call hears itself back. Whoever is on
+        // headphones never notices; the next person to join does.
+        //
+        // So a microphone keeps one channel and keeps its processing, whatever
+        // the conference is doing. The audio settings can still widen it, which
+        // is what the control in the audio settings menu does.
         return {
-            autoGainControl: enableStereo ? false : !disableAP && !disableAGC,
-            channelCount: enableStereo ? 2 : 1,
-            echoCancellation: enableStereo ? false : !disableAP && !disableAEC,
-            noiseSuppression: enableStereo ? false : !disableAP && !disableNS
+            autoGainControl: !disableAP && !disableAGC,
+            channelCount: 1,
+            echoCancellation: !disableAP && !disableAEC,
+            noiseSuppression: !disableAP && !disableNS
         };
     }
 

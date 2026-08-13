@@ -1,6 +1,8 @@
 import { IReduxState, IStore } from '../app/types';
+import { replaceLocalTrack } from '../base/tracks/actions.any';
 import { toggleUpdateAudioSettings } from '../base/tracks/actions.web';
-import { getLocalJitsiAudioTrackSettings } from '../base/tracks/functions.any';
+import { getLocalJitsiAudioTrack, getLocalJitsiAudioTrackSettings } from '../base/tracks/functions.any';
+import { createLocalTracksF } from '../base/tracks/functions.web';
 
 /**
  * Whether the microphone is being mixed down to one channel.
@@ -23,11 +25,16 @@ export function isMonoMicrophoneEnabled(state: IReduxState): boolean {
 /**
  * Mixes the microphone down to mono, or lets it back out to two channels.
  *
- * Desktop audio is deliberately untouched. It comes from getDisplayMedia by way
- * of ScreenObtainer, which asks for two channels of its own accord, and a game
- * or a video mixed for two channels is the reason stereo gets turned on at all.
- * A microphone has one capsule, so its second channel is a copy of the first
- * that every participant pays to receive.
+ * This only decides anything with echo cancellation OFF. Chrome's audio
+ * processing downmixes to mono, so with cancellation on the microphone has one
+ * channel whatever is asked for here; with it off the device's own width comes
+ * through, and this is what asks for less than that. Mono with no cancellation
+ * is a real combination — a stereo interface that should not be sent as two
+ * identical channels — and it is not reachable any other way.
+ *
+ * Desktop audio is untouched. It comes from getDisplayMedia by way of
+ * ScreenObtainer, which asks for two channels of its own accord, and a game or
+ * a video mixed for two channels is the reason stereo gets turned on at all.
  *
  * @returns {Function}
  */
@@ -35,9 +42,24 @@ export function toggleMonoMicrophone() {
     return async (dispatch: IStore['dispatch'], getState: IStore['getState']) => {
         const mono = !isMonoMicrophoneEnabled(getState());
 
-        // Applies to the microphone that is open now and stores the choice for
-        // the next one; channel count is a capture constraint, so both halves
-        // are needed for the setting to mean anything.
+        // Stores the choice, so the next microphone opened is captured with it.
         await dispatch(toggleUpdateAudioSettings({ channelCount: mono ? 1 : 2 }));
+
+        // And re-opens the current one, because that is the only way it takes
+        // effect: applyConstraints cannot change the channel count of a track
+        // that is already running, which is why this looked dead when it only
+        // stored the setting. createLocalTracksF reads the stored settings back
+        // out, so the new track is captured at the width just chosen.
+        const current = getLocalJitsiAudioTrack(getState());
+
+        if (!current) {
+            return;
+        }
+
+        const [ track ] = await createLocalTracksF({ devices: [ 'audio' ] });
+
+        if (track) {
+            await dispatch(replaceLocalTrack(current, track));
+        }
     };
 }

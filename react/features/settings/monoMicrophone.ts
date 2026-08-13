@@ -1,15 +1,23 @@
 import { IReduxState, IStore } from '../app/types';
-import { updateSettings } from '../base/settings/actions';
 import { toggleUpdateAudioSettings } from '../base/tracks/actions.web';
+import { getLocalJitsiAudioTrackSettings } from '../base/tracks/functions.any';
 
 /**
  * Whether the microphone is being mixed down to one channel.
+ *
+ * Read from the same place capture reads it, rather than from a preference of
+ * its own: audio settings are already persisted and already applied to the next
+ * microphone opened, so a second copy of the answer could only ever disagree
+ * with the first.
  *
  * @param {IReduxState} state - The Redux state.
  * @returns {boolean}
  */
 export function isMonoMicrophoneEnabled(state: IReduxState): boolean {
-    return state['features/base/settings'].monoMicrophone !== false;
+    const settings = state['features/settings'].audioSettings
+        ?? getLocalJitsiAudioTrackSettings(state);
+
+    return settings?.channelCount !== 2;
 }
 
 /**
@@ -27,11 +35,9 @@ export function toggleMonoMicrophone() {
     return async (dispatch: IStore['dispatch'], getState: IStore['getState']) => {
         const mono = !isMonoMicrophoneEnabled(getState());
 
-        dispatch(updateSettings({ monoMicrophone: mono }));
-
-        // Channel count is a capture constraint, so the track has to be told;
-        // this is the same path the audio settings already use, which merges
-        // the change over whatever else is currently applied.
+        // Applies to the microphone that is open now and stores the choice for
+        // the next one; channel count is a capture constraint, so both halves
+        // are needed for the setting to mean anything.
         await dispatch(toggleUpdateAudioSettings({ channelCount: mono ? 1 : 2 }));
     };
 }

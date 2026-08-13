@@ -21,7 +21,6 @@ const DEFAULT_STATE: ISettingsState = {
     disableCrashReporting: undefined,
     disableP2P: undefined,
     disableSelfView: false,
-    monoMicrophone: true,
     displayName: undefined,
     email: undefined,
     localFlipX: true,
@@ -59,7 +58,6 @@ export interface IAudioSettings {
 }
 export interface ISettingsState {
     audioOutputDeviceId?: string;
-    monoMicrophone?: boolean;
     audioSettings?: IAudioSettings;
     audioSettingsVisible?: boolean;
     avatarURL?: string;

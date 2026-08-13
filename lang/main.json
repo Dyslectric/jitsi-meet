@@ -1235,6 +1235,7 @@
         }
     },
     "settings": {
+        "monoMicrophone": "Mix microphone to mono",
         "audio": "Audio",
         "audioTranslation": "Enable audio translation",
         "buttonLabel": "Settings",

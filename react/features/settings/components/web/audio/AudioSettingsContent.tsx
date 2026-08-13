@@ -14,6 +14,7 @@ import ContextMenuItem from '../../../../base/ui/components/web/ContextMenuItem'
 import ContextMenuItemGroup from '../../../../base/ui/components/web/ContextMenuItemGroup';
 import { toggleNoiseSuppression } from '../../../../noise-suppression/actions';
 import { isNoiseSuppressionEnabled } from '../../../../noise-suppression/functions';
+import { isMonoMicrophoneEnabled, toggleMonoMicrophone } from '../../../monoMicrophone';
 import { isPrejoinPageVisible } from '../../../../prejoin/functions';
 import { createLocalAudioTracks } from '../../../functions.web';
 
@@ -62,6 +63,7 @@ export interface IProps {
     /**
      * Whether noise suppression is enabled or not.
      */
+    monoMicrophoneEnabled: boolean;
     noiseSuppressionEnabled: boolean;
 
     /**
@@ -127,6 +129,7 @@ const AudioSettingsContent = ({
     currentOutputDeviceId,
     measureAudioLevels,
     microphoneDevices,
+    monoMicrophoneEnabled,
     noiseSuppressionEnabled,
     outputDevices,
     prejoinVisible,
@@ -332,6 +335,10 @@ const AudioSettingsContent = ({
                             checked = { noiseSuppressionEnabled }
                             label = { t('toolbar.noiseSuppression') }
                             onChange = { toggleSuppression } />
+                        <Checkbox
+                            checked = { monoMicrophoneEnabled }
+                            label = { t('settings.monoMicrophone') }
+                            onChange = { toggleMono } />
                     </div>
                 </ContextMenuItemGroup>
             )}
@@ -341,6 +348,7 @@ const AudioSettingsContent = ({
 
 const mapStateToProps = (state: IReduxState) => {
     return {
+        monoMicrophoneEnabled: isMonoMicrophoneEnabled(state),
         noiseSuppressionEnabled: isNoiseSuppressionEnabled(state),
         prejoinVisible: isPrejoinPageVisible(state)
     };
@@ -348,6 +356,9 @@ const mapStateToProps = (state: IReduxState) => {
 
 const mapDispatchToProps = (dispatch: IStore['dispatch']) => {
     return {
+        toggleMono() {
+            dispatch(toggleMonoMicrophone());
+        },
         toggleSuppression() {
             dispatch(toggleNoiseSuppression());
         }

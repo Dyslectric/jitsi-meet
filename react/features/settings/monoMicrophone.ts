@@ -1,8 +1,9 @@
 import { IReduxState, IStore } from '../app/types';
 import { replaceLocalTrack } from '../base/tracks/actions.any';
-import { toggleUpdateAudioSettings } from '../base/tracks/actions.web';
 import { getLocalJitsiAudioTrack, getLocalJitsiAudioTrackSettings } from '../base/tracks/functions.any';
 import { createLocalTracksF } from '../base/tracks/functions.web';
+
+import { setAudioSettings } from './actions.web';
 
 /**
  * Whether the microphone is being mixed down to one channel.
@@ -42,24 +43,32 @@ export function toggleMonoMicrophone() {
     return async (dispatch: IStore['dispatch'], getState: IStore['getState']) => {
         const mono = !isMonoMicrophoneEnabled(getState());
 
-        // Stores the choice, so the next microphone opened is captured with it.
-        await dispatch(toggleUpdateAudioSettings({ channelCount: mono ? 1 : 2 }));
+        // Stored directly rather than through toggleUpdateAudioSettings, which
+        // applies the constraints and then stores whatever the live track
+        // reports afterwards. Channel count is the one setting applyConstraints
+        // cannot change on a running track, so that path reads back the width
+        // the microphone still has and saves that — silently replacing the
+        // choice with its opposite, which is why this looked both dead and
+        // sticky.
+        const current = getLocalJitsiAudioTrackSettings(getState());
+
+        dispatch(setAudioSettings({ ...current, channelCount: mono ? 1 : 2 }));
 
         // And re-opens the current one, because that is the only way it takes
         // effect: applyConstraints cannot change the channel count of a track
         // that is already running, which is why this looked dead when it only
         // stored the setting. createLocalTracksF reads the stored settings back
         // out, so the new track is captured at the width just chosen.
-        const current = getLocalJitsiAudioTrack(getState());
+        const track_ = getLocalJitsiAudioTrack(getState());
 
-        if (!current) {
+        if (!track_) {
             return;
         }
 
         const [ track ] = await createLocalTracksF({ devices: [ 'audio' ] });
 
         if (track) {
-            await dispatch(replaceLocalTrack(current, track));
+            await dispatch(replaceLocalTrack(track_, track));
         }
     };
 }

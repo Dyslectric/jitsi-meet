@@ -55,11 +55,11 @@ export interface IAudioSettings {
     autoGainControl?: boolean;
     channelCount?: 1 | 2;
     echoCancellation?: boolean;
-    monoMicrophone?: boolean;
     noiseSuppression?: boolean;
 }
 export interface ISettingsState {
     audioOutputDeviceId?: string;
+    monoMicrophone?: boolean;
     audioSettings?: IAudioSettings;
     audioSettingsVisible?: boolean;
     avatarURL?: string;

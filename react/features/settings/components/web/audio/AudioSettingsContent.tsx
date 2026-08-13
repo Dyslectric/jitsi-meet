@@ -67,6 +67,11 @@ export interface IProps {
     noiseSuppressionEnabled: boolean;
 
     /**
+    * Mixes the microphone down to one channel, or lets it back out to two.
+    */
+    toggleMono: () => void;
+
+    /**
     * A list of objects containing the labels and deviceIds
     * of all the output devices.
     */
@@ -135,6 +140,7 @@ const AudioSettingsContent = ({
     prejoinVisible,
     setAudioInputDevice,
     setAudioOutputDevice,
+    toggleMono,
     toggleSuppression
 }: IProps) => {
     const _componentWasUnmounted = useRef(false);

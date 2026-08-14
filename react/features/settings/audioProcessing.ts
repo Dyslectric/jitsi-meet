@@ -1,4 +1,5 @@
 import { IReduxState, IStore } from '../app/types';
+import { IAudioSettings } from '../base/settings/reducer';
 import { replaceLocalTrack } from '../base/tracks/actions.any';
 import { getLocalJitsiAudioTrack, getLocalJitsiAudioTrackSettings } from '../base/tracks/functions.any';
 import { createLocalTracksF } from '../base/tracks/functions.web';
@@ -40,10 +41,15 @@ export function isAudioProcessingEnabled(_state: IReduxState): boolean {
  * microphone unprocessed while the switch said it was on — the settings
  * describing the microphone rather than deciding it.
  *
+ * The return type is declared rather than inferred, and it has to be: without
+ * it `enabled ? 1 : 2` widens to `number`, which is not assignable to
+ * IAudioSettings.channelCount (`1 | 2`). The dev server transpiles without
+ * typechecking, so that failure appears only in a production build.
+ *
  * @param {IReduxState} state - The Redux state.
- * @returns {Object} Constraints for getUserMedia.
+ * @returns {IAudioSettings} Constraints for getUserMedia.
  */
-export function audioSettingsForCapture(state: IReduxState) {
+export function audioSettingsForCapture(state: IReduxState): IAudioSettings {
     const enabled = isAudioProcessingEnabled(state);
 
     return {

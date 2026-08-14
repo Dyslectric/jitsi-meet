@@ -15,6 +15,8 @@ import {
 import { IAudioSettings } from '../settings/reducer';
 import { getJitsiMeetGlobalNSConnectionTimes } from '../util/helpers';
 
+import { audioSettingsForCapture } from '../../settings/audioProcessing';
+
 import { getCameraFacingMode, getLocalJitsiAudioTrack, getLocalJitsiAudioTrackSettings } from './functions.any';
 import loadEffects from './loadEffects';
 import logger from './logger';
@@ -68,7 +70,11 @@ export function createLocalTracksF(options: ITrackOptions = {}, store?: IStore, 
     const constraints = options.constraints ?? state['features/base/config'].constraints ?? {};
 
     if (isAdvancedAudioSettingsEnabled(state) && typeof APP !== 'undefined') {
-        constraints.audio = state['features/settings'].audioSettings ?? getLocalJitsiAudioTrackSettings(state);
+        // From the switch rather than from features/settings.audioSettings.
+        // That object is written from the live track's getSettings() too, so on
+        // a device reporting no echo cancellation it fed itself back in and the
+        // next microphone opened unprocessed however the switch was set.
+        constraints.audio = audioSettingsForCapture(state);
     }
 
 

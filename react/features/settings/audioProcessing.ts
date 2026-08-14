@@ -32,6 +32,29 @@ export function isAudioProcessingEnabled(_state: IReduxState): boolean {
 }
 
 /**
+ * The audio constraints a microphone should be captured with.
+ *
+ * Used instead of the stored audioSettings, which is written from the live
+ * track's getSettings() as well as by this switch. On a device that reports no
+ * echo cancellation, capture would otherwise read that back and open the next
+ * microphone unprocessed while the switch said it was on — the settings
+ * describing the microphone rather than deciding it.
+ *
+ * @param {IReduxState} state - The Redux state.
+ * @returns {Object} Constraints for getUserMedia.
+ */
+export function audioSettingsForCapture(state: IReduxState) {
+    const enabled = isAudioProcessingEnabled(state);
+
+    return {
+        autoGainControl: enabled,
+        channelCount: enabled ? 1 : 2,
+        echoCancellation: enabled,
+        noiseSuppression: enabled
+    };
+}
+
+/**
  * Turns the browser's audio processing on or off for the microphone.
  *
  * One switch for echo cancellation, noise suppression, gain control and the
@@ -62,13 +85,7 @@ export function toggleAudioProcessing() {
         // track, so that path reads back the width the microphone still has and
         // saves that — replacing the choice with its opposite, and the capture
         // below would then faithfully reproduce the old width.
-        dispatch(setAudioSettings({
-            ...current,
-            autoGainControl: enabled,
-            channelCount: enabled ? 1 : 2,
-            echoCancellation: enabled,
-            noiseSuppression: enabled
-        }));
+        dispatch(setAudioSettings({ ...current, ...audioSettingsForCapture(getState()) }));
 
         // Then reopen the microphone. The three processing constraints would
         // have applied to the running track, but the channel count would not,

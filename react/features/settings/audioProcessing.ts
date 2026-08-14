@@ -1,6 +1,9 @@
 import { IReduxState, IStore } from '../app/types';
-import { toggleUpdateAudioSettings } from '../base/tracks/actions.web';
-import { getLocalJitsiAudioTrackSettings } from '../base/tracks/functions.any';
+import { replaceLocalTrack } from '../base/tracks/actions.any';
+import { getLocalJitsiAudioTrack, getLocalJitsiAudioTrackSettings } from '../base/tracks/functions.any';
+import { createLocalTracksF } from '../base/tracks/functions.web';
+
+import { setAudioSettings } from './actions.web';
 
 /**
  * Whether the browser is processing the microphone.
@@ -18,41 +21,55 @@ export function isAudioProcessingEnabled(state: IReduxState): boolean {
 /**
  * Turns the browser's audio processing on or off for the microphone.
  *
- * One switch for echo cancellation, noise suppression and gain control,
- * because they are not independently useful here and their consequences are
- * not separable either. Chrome's processing downmixes to mono, so with it on a
- * microphone is one channel whatever channel count is requested, and with it
- * off the device's own width comes through. Offering four controls invited the
- * question "why does the stereo box do nothing", whose honest answer is that
- * this is the only control there ever was.
+ * One switch for echo cancellation, noise suppression, gain control and the
+ * channel count, because they are not independently useful here and their
+ * consequences are not separable: Chrome's processing downmixes to mono, so
+ * with it on a microphone is one channel whatever is asked for, and with it off
+ * the device's own width comes through.
  *
- * On is right for a person in a room: without echo cancellation the call hears
+ * On is right for a person in a room — without echo cancellation the call hears
  * itself back through their speakers. Off is for an instrument, an interface,
- * or anything else where the processing is destroying what it is trying to
- * clean up.
+ * or anything else the processing is destroying while trying to clean it up.
  *
- * Desktop audio is untouched either way — ScreenObtainer captures that track
- * with no processing of its own accord, which is why shared audio already
- * sounds right.
+ * Desktop audio is untouched either way; ScreenObtainer captures that track
+ * with no processing of its own accord.
  *
  * @returns {Function}
  */
 export function toggleAudioProcessing() {
     return async (dispatch: IStore['dispatch'], getState: IStore['getState']) => {
         const enabled = !isAudioProcessingEnabled(getState());
+        const current = getLocalJitsiAudioTrackSettings(getState());
 
-        // These three, unlike channel count, can be applied to a microphone
-        // that is already open, so the change is audible immediately rather
-        // than at the next capture.
-        await dispatch(toggleUpdateAudioSettings({
+        // Stored directly rather than through toggleUpdateAudioSettings, which
+        // applies the constraints and then saves whatever the live track
+        // reports back afterwards. Channel count cannot be changed on a running
+        // track, so that path reads back the width the microphone still has and
+        // saves that — replacing the choice with its opposite, and the capture
+        // below would then faithfully reproduce the old width.
+        dispatch(setAudioSettings({
+            ...current,
             autoGainControl: enabled,
-            // One channel when the processing runs, two when it does not, said
-            // explicitly rather than left as a side effect. Chrome downmixes
-            // anyway, so this changes nothing there; it states the intent for
-            // the next capture and for browsers that do not.
             channelCount: enabled ? 1 : 2,
             echoCancellation: enabled,
             noiseSuppression: enabled
         }));
+
+        // Then reopen the microphone. The three processing constraints would
+        // have applied to the running track, but the channel count would not,
+        // so without this the switch half works: the processing changes and the
+        // width does not. createLocalTracksF reads the settings stored above,
+        // so the replacement is captured exactly as asked.
+        const existing = getLocalJitsiAudioTrack(getState());
+
+        if (!existing) {
+            return;
+        }
+
+        const [ track ] = await createLocalTracksF({ devices: [ 'audio' ] });
+
+        if (track) {
+            await dispatch(replaceLocalTrack(existing, track));
+        }
     };
 }

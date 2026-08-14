@@ -342,10 +342,6 @@ const AudioSettingsContent = ({
                         // eslint-disable-next-line react/jsx-no-bind
                         onClick = { e => e.stopPropagation() }>
                         <Checkbox
-                            checked = { noiseSuppressionEnabled }
-                            label = { t('toolbar.noiseSuppression') }
-                            onChange = { toggleSuppression } />
-                        <Checkbox
                             checked = { audioProcessingEnabled }
                             label = { t('settings.audioProcessing') }
                             onChange = { toggleProcessing } />

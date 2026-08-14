@@ -322,7 +322,11 @@ class AudioDevicesSelection extends AbstractDialogTab<IProps, {}> {
 
         const isAudioSettingsEnabled = Boolean(audioSettings?.autoGainControl || audioSettings?.channelCount === 2 || audioSettings?.echoCancellation || audioSettings?.noiseSuppression);
 
-        const shouldDisplayNoiseSuppressionCheckbox = !hideNoiseSuppression && !iAmVisitor;
+        // Hidden with the four above it: noise suppression is one of the three
+        // things the microphone menu's single switch now turns on and off
+        // together, and a second control for one third of it could only
+        // disagree with the first.
+        const shouldDisplayNoiseSuppressionCheckbox = false;
         // Replaced by the single "Clean up microphone audio" switch in the
         // microphone menu. These four presented echo cancellation, noise
         // suppression, gain control and stereo as independent choices, which

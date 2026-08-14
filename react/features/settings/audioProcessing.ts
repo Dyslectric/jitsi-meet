@@ -46,6 +46,11 @@ export function toggleAudioProcessing() {
         // than at the next capture.
         await dispatch(toggleUpdateAudioSettings({
             autoGainControl: enabled,
+            // One channel when the processing runs, two when it does not, said
+            // explicitly rather than left as a side effect. Chrome downmixes
+            // anyway, so this changes nothing there; it states the intent for
+            // the next capture and for browsers that do not.
+            channelCount: enabled ? 1 : 2,
             echoCancellation: enabled,
             noiseSuppression: enabled
         }));

@@ -11,15 +11,24 @@ import { setAudioSettings } from './actions.web';
  * @param {IReduxState} state - The Redux state.
  * @returns {boolean}
  */
-export function isAudioProcessingEnabled(state: IReduxState): boolean {
-    // What was asked for, not what the microphone reports. A device that cannot
-    // do echo cancellation says so in getSettings() whatever was requested — a
-    // virtual input, most of them — and reading that back made the switch show
-    // unchecked on load while the preference was simply unset. It is a
-    // preference, so an unset one is the default, which is on.
-    const stored = state['features/settings'].audioSettings;
+/**
+ * What the user chose this session, if they chose anything.
+ *
+ * Deliberately not in the store. features/settings.audioSettings is written
+ * from the live track's own getSettings() as well as by this switch, and a
+ * device that cannot do echo cancellation reports false there whatever was
+ * requested — most virtual inputs do. Reading the switch's state back out of it
+ * meant the switch showed off at load, on a microphone that was being processed
+ * exactly as asked.
+ *
+ * A module variable is also the right lifetime: it resets when the page does,
+ * so every call starts with the processing on and a choice to turn it off lasts
+ * for that call only.
+ */
+let chosen: boolean | undefined;
 
-    return stored ? stored.echoCancellation !== false : true;
+export function isAudioProcessingEnabled(_state: IReduxState): boolean {
+    return chosen ?? true;
 }
 
 /**
@@ -43,6 +52,8 @@ export function isAudioProcessingEnabled(state: IReduxState): boolean {
 export function toggleAudioProcessing() {
     return async (dispatch: IStore['dispatch'], getState: IStore['getState']) => {
         const enabled = !isAudioProcessingEnabled(getState());
+
+        chosen = enabled;
         const current = getLocalJitsiAudioTrackSettings(getState());
 
         // Stored directly rather than through toggleUpdateAudioSettings, which

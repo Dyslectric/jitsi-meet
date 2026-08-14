@@ -14,7 +14,6 @@ import ContextMenuItem from '../../../../base/ui/components/web/ContextMenuItem'
 import ContextMenuItemGroup from '../../../../base/ui/components/web/ContextMenuItemGroup';
 import { toggleNoiseSuppression } from '../../../../noise-suppression/actions';
 import { isNoiseSuppressionEnabled } from '../../../../noise-suppression/functions';
-import { isMonoMicrophoneEnabled, toggleMonoMicrophone } from '../../../monoMicrophone';
 import { isPrejoinPageVisible } from '../../../../prejoin/functions';
 import { createLocalAudioTracks } from '../../../functions.web';
 
@@ -63,13 +62,7 @@ export interface IProps {
     /**
      * Whether noise suppression is enabled or not.
      */
-    monoMicrophoneEnabled: boolean;
     noiseSuppressionEnabled: boolean;
-
-    /**
-    * Mixes the microphone down to one channel, or lets it back out to two.
-    */
-    toggleMono: () => void;
 
     /**
     * A list of objects containing the labels and deviceIds
@@ -134,13 +127,11 @@ const AudioSettingsContent = ({
     currentOutputDeviceId,
     measureAudioLevels,
     microphoneDevices,
-    monoMicrophoneEnabled,
     noiseSuppressionEnabled,
     outputDevices,
     prejoinVisible,
     setAudioInputDevice,
     setAudioOutputDevice,
-    toggleMono,
     toggleSuppression
 }: IProps) => {
     const _componentWasUnmounted = useRef(false);
@@ -341,10 +332,6 @@ const AudioSettingsContent = ({
                             checked = { noiseSuppressionEnabled }
                             label = { t('toolbar.noiseSuppression') }
                             onChange = { toggleSuppression } />
-                        <Checkbox
-                            checked = { monoMicrophoneEnabled }
-                            label = { t('settings.monoMicrophone') }
-                            onChange = { toggleMono } />
                     </div>
                 </ContextMenuItemGroup>
             )}
@@ -354,7 +341,6 @@ const AudioSettingsContent = ({
 
 const mapStateToProps = (state: IReduxState) => {
     return {
-        monoMicrophoneEnabled: isMonoMicrophoneEnabled(state),
         noiseSuppressionEnabled: isNoiseSuppressionEnabled(state),
         prejoinVisible: isPrejoinPageVisible(state)
     };
@@ -362,9 +348,6 @@ const mapStateToProps = (state: IReduxState) => {
 
 const mapDispatchToProps = (dispatch: IStore['dispatch']) => {
     return {
-        toggleMono() {
-            dispatch(toggleMonoMicrophone());
-        },
         toggleSuppression() {
             dispatch(toggleNoiseSuppression());
         }

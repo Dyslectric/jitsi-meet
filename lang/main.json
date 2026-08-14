@@ -1235,6 +1235,7 @@
         }
     },
     "settings": {
+        "audioProcessing": "Clean up microphone audio",
         "audio": "Audio",
         "audioTranslation": "Enable audio translation",
         "buttonLabel": "Settings",

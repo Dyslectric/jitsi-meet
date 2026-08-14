@@ -14,6 +14,7 @@ import ContextMenuItem from '../../../../base/ui/components/web/ContextMenuItem'
 import ContextMenuItemGroup from '../../../../base/ui/components/web/ContextMenuItemGroup';
 import { toggleNoiseSuppression } from '../../../../noise-suppression/actions';
 import { isNoiseSuppressionEnabled } from '../../../../noise-suppression/functions';
+import { isAudioProcessingEnabled, toggleAudioProcessing } from '../../../audioProcessing';
 import { isPrejoinPageVisible } from '../../../../prejoin/functions';
 import { createLocalAudioTracks } from '../../../functions.web';
 
@@ -60,9 +61,19 @@ export interface IProps {
     microphoneDevices: Array<{ deviceId: string; label: string; }>;
 
     /**
+     * Whether the browser is processing the microphone.
+     */
+    audioProcessingEnabled: boolean;
+
+    /**
      * Whether noise suppression is enabled or not.
      */
     noiseSuppressionEnabled: boolean;
+
+    /**
+     * Turns the browser's processing of the microphone on or off.
+     */
+    toggleProcessing: () => void;
 
     /**
     * A list of objects containing the labels and deviceIds
@@ -127,11 +138,13 @@ const AudioSettingsContent = ({
     currentOutputDeviceId,
     measureAudioLevels,
     microphoneDevices,
+    audioProcessingEnabled,
     noiseSuppressionEnabled,
     outputDevices,
     prejoinVisible,
     setAudioInputDevice,
     setAudioOutputDevice,
+    toggleProcessing,
     toggleSuppression
 }: IProps) => {
     const _componentWasUnmounted = useRef(false);
@@ -332,6 +345,10 @@ const AudioSettingsContent = ({
                             checked = { noiseSuppressionEnabled }
                             label = { t('toolbar.noiseSuppression') }
                             onChange = { toggleSuppression } />
+                        <Checkbox
+                            checked = { audioProcessingEnabled }
+                            label = { t('settings.audioProcessing') }
+                            onChange = { toggleProcessing } />
                     </div>
                 </ContextMenuItemGroup>
             )}
@@ -341,6 +358,7 @@ const AudioSettingsContent = ({
 
 const mapStateToProps = (state: IReduxState) => {
     return {
+        audioProcessingEnabled: isAudioProcessingEnabled(state),
         noiseSuppressionEnabled: isNoiseSuppressionEnabled(state),
         prejoinVisible: isPrejoinPageVisible(state)
     };
@@ -348,6 +366,9 @@ const mapStateToProps = (state: IReduxState) => {
 
 const mapDispatchToProps = (dispatch: IStore['dispatch']) => {
     return {
+        toggleProcessing() {
+            dispatch(toggleAudioProcessing());
+        },
         toggleSuppression() {
             dispatch(toggleNoiseSuppression());
         }

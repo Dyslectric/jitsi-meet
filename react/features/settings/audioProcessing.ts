@@ -12,10 +12,14 @@ import { setAudioSettings } from './actions.web';
  * @returns {boolean}
  */
 export function isAudioProcessingEnabled(state: IReduxState): boolean {
-    const settings = state['features/settings'].audioSettings
-        ?? getLocalJitsiAudioTrackSettings(state);
+    // What was asked for, not what the microphone reports. A device that cannot
+    // do echo cancellation says so in getSettings() whatever was requested — a
+    // virtual input, most of them — and reading that back made the switch show
+    // unchecked on load while the preference was simply unset. It is a
+    // preference, so an unset one is the default, which is on.
+    const stored = state['features/settings'].audioSettings;
 
-    return settings?.echoCancellation !== false;
+    return stored ? stored.echoCancellation !== false : true;
 }
 
 /**

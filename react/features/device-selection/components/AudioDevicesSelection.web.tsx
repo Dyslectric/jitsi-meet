@@ -323,7 +323,19 @@ class AudioDevicesSelection extends AbstractDialogTab<IProps, {}> {
         const isAudioSettingsEnabled = Boolean(audioSettings?.autoGainControl || audioSettings?.channelCount === 2 || audioSettings?.echoCancellation || audioSettings?.noiseSuppression);
 
         const shouldDisplayNoiseSuppressionCheckbox = !hideNoiseSuppression && !iAmVisitor;
-        const shouldDisplayAdvancedAudioSettingsCheckboxes = !hideNoiseSuppression && !iAmVisitor && isAdvancedAudioSettingsConfigEnabled && Boolean(audioSettings);
+        // Replaced by the single "Clean up microphone audio" switch in the
+        // microphone menu. These four presented echo cancellation, noise
+        // suppression, gain control and stereo as independent choices, which
+        // they are not: Chrome's processing downmixes to mono, so the stereo
+        // box did nothing while cancellation was on, and turning cancellation
+        // off widened the microphone whether or not stereo was ticked. One
+        // switch for the processing tells the truth about all four.
+        //
+        // The config flag stays on deliberately. It is what makes
+        // createLocalTracksF read features/settings.audioSettings when it opens
+        // a microphone, so turning it off would make the remaining switch store
+        // a preference nothing consults.
+        const shouldDisplayAdvancedAudioSettingsCheckboxes = false;
 
         const shouldDisabledNoiseSupressionCheckbox = shouldDisplayAdvancedAudioSettingsCheckboxes && (isAudioSettingsEnabled && !noiseSuppressionEnabled);
 

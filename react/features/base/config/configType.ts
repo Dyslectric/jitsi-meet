@@ -702,6 +702,7 @@ export interface IConfig {
     stereo?: boolean;
     subject?: string;
     testing?: {
+        allowMultipleTracks?: boolean;
         assumeBandwidth?: boolean;
         debugAudioLevels?: boolean;
         dumpTranscript?: boolean;

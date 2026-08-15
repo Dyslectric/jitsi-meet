@@ -9,7 +9,7 @@ import { showErrorNotification, showNotification } from '../../notifications/act
 import { NOTIFICATION_TIMEOUT_TYPE } from '../../notifications/constants';
 import { stopReceiver } from '../../remote-control/actions';
 import { setScreenAudioShareState, setScreenshareAudioTrack } from '../../screen-share/actions';
-import { isAudioOnlySharing, isScreenVideoShared } from '../../screen-share/functions';
+import { isAudioOnlySharing, isScreenVideoShared, isSeparateScreenshareAudioEnabled } from '../../screen-share/functions';
 import { toggleScreenshotCaptureSummary } from '../../screenshot-capture/actions';
 import { isScreenshotCaptureEnabled } from '../../screenshot-capture/functions';
 import { setAudioSettings } from '../../settings/actions.web';
@@ -87,17 +87,39 @@ export function toggleScreensharing(
 
 
 /**
- * Applies the AudioMixer effect on the local audio track if applicable. If there is no local audio track, the desktop
- * audio track is added to the conference.
+ * Sends the sound captured with a screen share, as a source of its own where the deployment allows it and mixed into
+ * the microphone where it does not.
+ *
+ * See isSeparateScreenshareAudioEnabled for why the separate source is worth having. The mixing branch is upstream's
+ * and stays for a deployment that has not turned the flag on — losing the sound of every share would be a poor way to
+ * discover a missing line of config.
+ *
+ * A published track is deliberately NOT dispatched into features/base/tracks. Everything that asks that store for
+ * "the local audio track" — the microphone button, the mute state, the level meter — takes the first one it finds, so
+ * a second entry there would make the microphone whichever of the two happened to be first in the array. The
+ * conference is the only thing that needs to know about this track, which is exactly how upstream's no-microphone
+ * branch below has always treated it.
  *
  * @private
  * @param {JitsiLocalTrack} desktopAudioTrack - The audio track to be added to the conference.
  * @param {*} state - The redux state.
  * @returns {void}
  */
-async function _maybeApplyAudioMixerEffect(desktopAudioTrack: any, state: IReduxState): Promise<void> {
+async function _publishDesktopAudio(desktopAudioTrack: any, state: IReduxState): Promise<void> {
     const localAudio = getLocalJitsiAudioTrack(state);
     const conference = getCurrentConference(state);
+
+    if (isSeparateScreenshareAudioEnabled(state)) {
+        try {
+            await conference?.addTrack(desktopAudioTrack);
+
+            return;
+        } catch (error) {
+            // The library refused the second source, which in practice means the flag reached this half of the app
+            // and not the other. Fall through to the mixer rather than share in silence: worse sound, but sound.
+            logger.error('Could not publish screen share audio as its own source; mixing it instead.', error);
+        }
+    }
 
     if (localAudio) {
         // If there is a localAudio stream, mix in the desktop audio stream captured by the screen sharing API.
@@ -109,6 +131,43 @@ async function _maybeApplyAudioMixerEffect(desktopAudioTrack: any, state: IRedux
         // stream as we would use a regular stream.
         await conference?.replaceTrack(null, desktopAudioTrack);
     }
+}
+
+/**
+ * Takes the sound of a screen share off the conference, whichever way it was sent.
+ *
+ * Asked of the conference rather than remembered from when the share started: a track that is one of the conference's
+ * own local tracks was published, by either the separate-source route or upstream's no-microphone one, and both are
+ * undone by removing it. Anything else is mixed into a microphone that is still in use, and the effect has to come off
+ * that instead.
+ *
+ * Awaited, all of it, which upstream's version was not — it cleared the effect and disposed of the track in the same
+ * breath, so the mixer could still be unwinding when the thing it was mixing went away. That leaves the shared sound
+ * welded to the sharer's microphone with no share left to explain it: they stop sharing, and everyone goes on hearing
+ * whatever their machine is playing until they mute themselves.
+ *
+ * @private
+ * @param {JitsiLocalTrack} desktopAudioTrack - The track the share was sending.
+ * @param {*} state - The redux state.
+ * @returns {void}
+ */
+async function _unpublishDesktopAudio(desktopAudioTrack: any, state: IReduxState): Promise<void> {
+    const conference = getCurrentConference(state);
+    const localAudio = getLocalJitsiAudioTrack(state);
+
+    try {
+        if (conference?.getLocalTracks(MEDIA_TYPE.AUDIO).includes(desktopAudioTrack)) {
+            await conference.removeTrack(desktopAudioTrack);
+        } else if (localAudio) {
+            await localAudio.setEffect(undefined);
+        }
+    } catch (error) {
+        // Reported and then dropped: the track is disposed of either way, and leaving a screen share that cannot be
+        // stopped is worse than a peer connection with one dead sender in it.
+        logger.error('Could not take screen share audio off the conference.', error);
+    }
+
+    desktopAudioTrack.dispose();
 }
 
 /**
@@ -132,7 +191,6 @@ async function _toggleScreenSharing(
     const audioOnlySharing = isAudioOnlySharing(state);
     const screenSharing = isScreenVideoShared(state);
     const conference = getCurrentConference(state);
-    const localAudio = getLocalJitsiAudioTrack(state);
     const localScreenshare = getLocalDesktopTrack(state['features/base/tracks']);
 
     // Toggle screenshare or audio-only share if the new state is not passed. Happens in the following two cases.
@@ -207,7 +265,7 @@ async function _toggleScreenSharing(
             // Noise suppression doesn't work with desktop audio because we can't chain track effects yet, disable it
             // first. We need to to wait for the effect to clear first or it might interfere with the audio mixer.
             await dispatch(setNoiseSuppressionEnabled(false));
-            _maybeApplyAudioMixerEffect(desktopAudioTrack, state);
+            await _publishDesktopAudio(desktopAudioTrack, state);
             dispatch(setScreenshareAudioTrack(desktopAudioTrack));
 
             // Handle the case where screen share was stopped from the browsers 'screen share in progress' window.
@@ -240,12 +298,7 @@ async function _toggleScreenSharing(
         // same sender will be re-used without the need for signaling a new ssrc through source-add.
         dispatch(setScreenshareMuted(true));
         if (desktopAudioTrack) {
-            if (localAudio) {
-                localAudio.setEffect(undefined);
-            } else {
-                await conference?.replaceTrack(desktopAudioTrack, null);
-            }
-            desktopAudioTrack.dispose();
+            await _unpublishDesktopAudio(desktopAudioTrack, getState());
             dispatch(setScreenshareAudioTrack(null));
         }
     }

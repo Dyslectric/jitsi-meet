@@ -158,7 +158,7 @@ import { suspendDetected } from './react/features/power-monitor/actions';
 import { initPrejoin, isPrejoinPageVisible } from './react/features/prejoin/functions';
 import { disableReceiver, stopReceiver } from './react/features/remote-control/actions';
 import { setScreenAudioShareState } from './react/features/screen-share/actions.web';
-import { isScreenAudioShared } from './react/features/screen-share/functions';
+import { isScreenAudioShared, isSeparateScreenshareAudioEnabled } from './react/features/screen-share/functions';
 import { toggleScreenshotCaptureSummary } from './react/features/screenshot-capture/actions';
 import { setAudioSettings } from './react/features/settings/actions.web';
 import { AudioMixerEffect } from './react/features/stream-effects/audio-mixer/AudioMixerEffect';
@@ -685,7 +685,17 @@ export default {
         // The second flow uses functionality from base/conference/middleware.web.js.
         // We check if system audio sharing was done using the first flow by verifying this._desktopAudioStream and
         // for the second by checking 'features/screen-share' state.
-        const { desktopAudioTrack } = APP.store.getState()['features/screen-share'];
+        const state = APP.store.getState();
+
+        // Where the share's sound is a source of its own it has nothing to do with the microphone, and swapping one
+        // microphone for another is none of its business. Without this, changing input device mid-share would take
+        // the published source off the room and mix it into the new microphone — quietly undoing the separation, and
+        // only for the people who touched their audio settings while sharing.
+        if (isSeparateScreenshareAudioEnabled(state)) {
+            return;
+        }
+
+        const { desktopAudioTrack } = state['features/screen-share'];
         const currentDesktopAudioTrack = this._desktopAudioStream || desktopAudioTrack;
 
         // If system audio is already being sent, mix it with the provided audio track.

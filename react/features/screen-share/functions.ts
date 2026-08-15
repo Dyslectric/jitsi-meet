@@ -2,6 +2,8 @@ import { IReduxState } from '../app/types';
 import { isWindows } from '../base/environment/environment';
 import { isMobileBrowser } from '../base/environment/utils';
 import { browser } from '../base/lib-jitsi-meet';
+import { MEDIA_TYPE } from '../base/media/constants';
+import { getVirtualScreenshareParticipantByOwnerId } from '../base/participants/functions';
 import { getLocalDesktopTrack } from '../base/tracks/functions';
 
 /**
@@ -32,6 +34,72 @@ export function isScreenAudioShared(state: IReduxState) {
  */
 export function isScreenAudioSupported() {
     return (!isMobileBrowser() && browser.isChromiumBased()) || (browser.isElectron() && isWindows());
+}
+
+/**
+ * Whether the sound of a screen share travels as a source of its own rather than mixed into the microphone.
+ *
+ * Upstream mixes the two together with an AudioMixerEffect, and what is wrong with sharing audio follows from that
+ * one decision. The pair arrive at a listener as a single track, so the shared application cannot be turned down
+ * without turning the person down, and closing their video cannot stop their sound. It also leaves the sharer's
+ * microphone carrying something that has to be unpicked from it again when the share ends — and a stop that does not
+ * finish unpicking leaves the shared sound on their microphone for the rest of the call.
+ *
+ * The flag is lib-jitsi-meet's own, read here rather than mirrored: it is what opens the guard in
+ * JitsiConference.addTrack against a second audio source, so a deployment that has not set it would have this code
+ * publishing a track the library refuses. One flag, so the two cannot disagree.
+ *
+ * @param {IReduxState} state - The state of the application.
+ * @returns {boolean}
+ */
+export function isSeparateScreenshareAudioEnabled(state: IReduxState) {
+    return Boolean(state['features/base/config'].testing?.allowMultipleTracks);
+}
+
+/**
+ * Whether a source name names the sound of a screen share rather than a microphone.
+ *
+ * Source names are `<endpoint>-a<index>`, and the index is handed out by order of addition — so a microphone is the
+ * endpoint's `-a0` and the screen share, added later and only ever by the code above, is `-a1`. There is nothing else
+ * in this application that publishes a second audio source, which is what makes the index enough to tell them apart;
+ * if that ever stops being true, this is where an explicit signal would go instead.
+ *
+ * Deliberately not matched with a lone `\d`: a translated audio source is `-a0.<language>`, and treating one of those
+ * as a screen share would silence somebody's interpreter behind a slider they never opened.
+ *
+ * @param {string|undefined} sourceName - The source name to examine.
+ * @returns {boolean}
+ */
+export function isScreenshareAudioSourceName(sourceName?: string) {
+    return Boolean(sourceName && (/-a[1-9]\d*$/).test(sourceName));
+}
+
+/**
+ * The participant id the sound of somebody's screen share is played under, if they are sending any.
+ *
+ * Which is not their own: the sound belongs to the share, so it is played as the screenshare participant and its
+ * volume is stored under that id. Anything offering a control over it has to say the same id back, or it will be
+ * moving a slider that belongs to the microphone.
+ *
+ * Undefined covers both "not sharing sound" and "sharing sound with no picture" — the second because a share with no
+ * video has no screenshare participant to be played as, and falls back to its sender.
+ *
+ * @param {IReduxState} state - The state of the application.
+ * @param {string|undefined} ownerId - The endpoint doing the sharing.
+ * @returns {string|undefined}
+ */
+export function getScreenshareAudioParticipantId(state: IReduxState, ownerId?: string) {
+    if (!ownerId) {
+        return undefined;
+    }
+
+    const sharingAudio = state['features/base/tracks'].some(track =>
+        !track.local
+        && track.mediaType === MEDIA_TYPE.AUDIO
+        && track.participantId === ownerId
+        && isScreenshareAudioSourceName(track.jitsiTrack?.getSourceName()));
+
+    return sharingAudio ? getVirtualScreenshareParticipantByOwnerId(state, ownerId)?.id : undefined;
 }
 
 /**

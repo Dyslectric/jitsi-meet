@@ -2,10 +2,28 @@ import React from 'react';
 import { connect } from 'react-redux';
 
 import { IReduxState } from '../../../../app/types';
+import { isScreenshareAudioSourceName } from '../../../../screen-share/functions';
+import { getVirtualScreenshareParticipantByOwnerId } from '../../../participants/functions';
 import { ITrack } from '../../../tracks/types';
 import { MEDIA_TYPE } from '../../constants';
 
 import AudioTrack from './AudioTrack';
+
+/**
+ * A remote audio track, and the participant whose volume it follows.
+ */
+interface IAudioTrackToPlay {
+
+    /**
+     * The participant the volume of this track belongs to, which is not always the endpoint that sent it.
+     */
+    participantId: string;
+
+    /**
+     * The track itself.
+     */
+    track: ITrack;
+}
 
 /**
  * The type of the React {@code Component} props of {@link AudioTracksContainer}.
@@ -13,9 +31,9 @@ import AudioTrack from './AudioTrack';
 interface IProps {
 
     /**
-     * All media tracks stored in redux.
+     * Every remote audio track, each with the participant its volume follows.
      */
-    _tracks: ITrack[];
+    _audioTracks: IAudioTrackToPlay[];
 }
 
 /**
@@ -25,20 +43,18 @@ interface IProps {
  * @returns {Array<ReactElement>}
  */
 function AudioTracksContainer(props: IProps) {
-    const { _tracks } = props;
-    const remoteAudioTracks = _tracks.filter(t => !t.local && t.mediaType === MEDIA_TYPE.AUDIO);
+    const { _audioTracks } = props;
 
     return (
         <div>
             {
-                remoteAudioTracks.map(t => {
-                    const { jitsiTrack, participantId } = t;
-                    const audioTrackId = jitsiTrack?.getId();
+                _audioTracks.map(({ participantId, track }) => {
+                    const audioTrackId = track.jitsiTrack?.getId();
                     const id = `remoteAudio_${audioTrackId || ''}`;
 
                     return (
                         <AudioTrack
-                            audioTrack = { t }
+                            audioTrack = { track }
                             id = { id }
                             key = { id }
                             participantId = { participantId } />
@@ -63,7 +79,25 @@ function _mapStateToProps(state: IReduxState) {
     // inefficient because features/base/tracks is an array and in order to find a track by participant ID
     // we need to go through the array. Introducing a map participantID -> track could be beneficial in this case.
     return {
-        _tracks: state['features/base/tracks']
+        _audioTracks: state['features/base/tracks']
+            .filter(track => !track.local && track.mediaType === MEDIA_TYPE.AUDIO)
+            .map(track => {
+                // The sound of a screen share is played as the share's own participant rather than as the person
+                // sharing it. AudioTrack looks its volume up by participant id, so this is the line that gives the
+                // two separate volumes: the shared application can be turned down, or off, with the voice explaining
+                // it left alone — and it goes quiet by itself when the share does, because the participant does.
+                //
+                // A share of sound with no picture has no screenshare participant to belong to, and falls back to
+                // its sender: one volume for both, as it was, rather than a slider with nothing behind it.
+                const screenshare = isScreenshareAudioSourceName(track.jitsiTrack?.getSourceName())
+                    ? getVirtualScreenshareParticipantByOwnerId(state, track.participantId)
+                    : undefined;
+
+                return {
+                    participantId: screenshare?.id ?? track.participantId,
+                    track
+                };
+            })
     };
 }
 

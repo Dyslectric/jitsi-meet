@@ -12,11 +12,23 @@ import { VOLUME_SLIDER_SCALE } from '../../constants';
 interface IProps {
 
     /**
+     * What the slider is for, where that is not simply "this participant". A menu can carry more than one of these —
+     * a person and the screen share they are playing — and two identical rows of slider would be a guess as to which
+     * is which.
+     */
+    icon?: Function;
+
+    /**
      * The value of the audio slider should display at when the component first
      * mounts. Changes will be stored in state. The value should be a number
      * between 0 and 1.
      */
     initialValue: number;
+
+    /**
+     * The label read out for this slider, defaulting to the participant's volume.
+     */
+    label?: string;
 
     /**
      * The callback to invoke when the audio slider value changes.
@@ -66,7 +78,9 @@ const _onClick = (e: React.MouseEvent) => {
 };
 
 const VolumeSlider = ({
+    icon = IconVolumeUp,
     initialValue,
+    label,
     onChange
 }: IProps) => {
     const { classes, cx } = useStyles();
@@ -83,13 +97,13 @@ const VolumeSlider = ({
 
     return (
         <div
-            aria-label = { t('volumeSlider') }
+            aria-label = { label ?? t('volumeSlider') }
             className = { cx('popupmenu__contents', classes.container) }
             onClick = { _onClick }>
             <span className = { classes.icon }>
                 <Icon
                     size = { 22 }
-                    src = { IconVolumeUp } />
+                    src = { icon } />
             </span>
             <div className = { classes.sliderContainer }>
                 <input

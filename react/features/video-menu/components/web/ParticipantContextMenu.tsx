@@ -9,6 +9,7 @@ import { MEDIA_TYPE as AVM_MEDIA_TYPE } from '../../../av-moderation/constants';
 import { isSupported as isAvModerationSupported, isForceMuted } from '../../../av-moderation/functions';
 import Avatar from '../../../base/avatar/components/Avatar';
 import { isIosMobileBrowser, isMobileBrowser } from '../../../base/environment/utils';
+import { IconScreenshare } from '../../../base/icons/svg';
 import { MEDIA_TYPE } from '../../../base/media/constants';
 import { PARTICIPANT_ROLE } from '../../../base/participants/constants';
 import { getLocalParticipant, hasRaisedHand, isPrivateChatEnabled } from '../../../base/participants/functions';
@@ -24,6 +25,7 @@ import { isStageFilmstripAvailable } from '../../../filmstrip/functions.web';
 import { QUICK_ACTION_BUTTON } from '../../../participants-pane/constants';
 import { getQuickActionButtonType } from '../../../participants-pane/functions';
 import { requestRemoteControl, stopController } from '../../../remote-control/actions';
+import { getScreenshareAudioParticipantId } from '../../../screen-share/functions';
 import { getParticipantMenuButtonsWithNotifyClick, showOverflowDrawer } from '../../../toolbox/functions.web';
 import { NOTIFY_CLICK_MODE } from '../../../toolbox/types';
 import { PARTICIPANT_MENU_BUTTONS as BUTTONS } from '../../constants';
@@ -167,6 +169,17 @@ const ParticipantContextMenu = ({
         dispatch(setVolume(participant.id, value));
     }, [ setVolume, dispatch ]);
 
+    // What this participant's screen share is playing, which is a separate sound from this participant and gets a
+    // separate control. It is stored under the screenshare's own participant id — see
+    // getScreenshareAudioParticipantId — so this slider and the audio element playing it agree on what they are for.
+    const _screenshareAudioId = useSelector((state: IReduxState) =>
+        getScreenshareAudioParticipantId(state, participant?.id));
+    const _screenshareVolume = (_screenshareAudioId ? participantsVolume[_screenshareAudioId] : undefined) ?? 1;
+
+    const _onScreenshareVolumeChange = useCallback(value => {
+        _screenshareAudioId && dispatch(setVolume(_screenshareAudioId, value));
+    }, [ _screenshareAudioId, dispatch ]);
+
     const _getCurrentParticipantId = useCallback(() => {
         const drawer = _overflowDrawer && !thumbnailMenu;
 
@@ -211,6 +224,11 @@ const ParticipantContextMenu = ({
         && (_overflowDrawer || thumbnailMenu)
         && typeof _volume === 'number'
         && !isNaN(_volume);
+
+    // Shown on the same terms as the one above, and only while there is a share making a sound to turn down. It
+    // comes and goes with the share, which is the point: a control that outlived what it controls would be the same
+    // confusion the mixed-in sound used to cause, in slider form.
+    const showScreenshareVolumeSlider = showVolumeSlider && Boolean(_screenshareAudioId);
 
     const getButtonProps = useCallback((key: string) => {
         const notifyMode = buttonsWithNotifyClick?.get(key);
@@ -384,6 +402,16 @@ const ParticipantContextMenu = ({
                         initialValue = { _volume }
                         key = 'volume-slider'
                         onChange = { _onVolumeChange } />
+                </ContextMenuItemGroup>
+            )}
+            {showScreenshareVolumeSlider && (
+                <ContextMenuItemGroup>
+                    <VolumeSlider
+                        icon = { IconScreenshare }
+                        initialValue = { _screenshareVolume }
+                        key = 'screenshare-volume-slider'
+                        label = { t('participantsPane.actions.screenshareVolume') }
+                        onChange = { _onScreenshareVolumeChange } />
                 </ContextMenuItemGroup>
             )}
             {breakoutRoomsButtons.length > 0 && (

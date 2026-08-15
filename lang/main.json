@@ -993,6 +993,7 @@
             "muteAll": "Mute all",
             "muteEveryoneElse": "Mute everyone else",
             "reject": "Reject",
+            "screenshareVolume": "Screen share volume slider",
             "stopDesktop": "Stop screen sharing",
             "stopEveryonesDesktop": "Stop everyone's screen-share",
             "stopEveryonesVideo": "Stop everyone's video",

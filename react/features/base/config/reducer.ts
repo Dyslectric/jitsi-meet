@@ -445,7 +445,14 @@ function _translateLegacyConfig(oldValue: IConfig) {
     }
 
     if (oldValue.stereo || oldValue.opusMaxAverageBitrate) {
+        // Spread, because translating two legacy spellings is not a licence to discard everything else the
+        // deployment put in audioQuality. A config carrying the old top-level `stereo` or `opusMaxAverageBitrate`
+        // beside a modern audioQuality — which is what docker-jitsi-meet renders as soon as ENABLE_STEREO or
+        // AUDIO_QUALITY_OPUS_BITRATE is set — lost every other key in the object, enableAdvancedAudioSettings
+        // included. That one reads as the audio menu storing preferences nothing consults: the settings appear to
+        // work and change nothing, which is a long way to travel from a legacy config translation.
         newValue.audioQuality = {
+            ...newValue.audioQuality,
             opusMaxAverageBitrate: oldValue.audioQuality?.opusMaxAverageBitrate ?? oldValue.opusMaxAverageBitrate,
             stereo: oldValue.audioQuality?.stereo ?? oldValue.stereo
         };

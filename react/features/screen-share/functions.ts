@@ -3,7 +3,7 @@ import { isWindows } from '../base/environment/environment';
 import { isMobileBrowser } from '../base/environment/utils';
 import { browser } from '../base/lib-jitsi-meet';
 import { MEDIA_TYPE } from '../base/media/constants';
-import { getVirtualScreenshareParticipantByOwnerId } from '../base/participants/functions';
+import { getRemoteScreenshareParticipantId } from '../base/participants/functions';
 import { getLocalDesktopTrack } from '../base/tracks/functions';
 
 /**
@@ -99,7 +99,7 @@ export function getScreenshareAudioParticipantId(state: IReduxState, ownerId?: s
         && track.participantId === ownerId
         && isScreenshareAudioSourceName(track.jitsiTrack?.getSourceName()));
 
-    return sharingAudio ? getVirtualScreenshareParticipantByOwnerId(state, ownerId)?.id : undefined;
+    return sharingAudio ? getRemoteScreenshareParticipantId(state, ownerId) : undefined;
 }
 
 /**

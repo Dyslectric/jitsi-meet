@@ -134,6 +134,33 @@ export function getVirtualScreenshareParticipantByOwnerId(stateful: IStateful, i
 }
 
 /**
+ * Returns the id of a remote participant's screenshare participant, if they have one.
+ *
+ * Answered from the participant store rather than from their video track, which is what
+ * {@link getVirtualScreenshareParticipantByOwnerId} does. The two agree whenever the track is there, but the track is
+ * the weaker of the two things to ask. With ssrc-rewriting — on by default — a remote track only reaches
+ * features/base/tracks once the bridge maps an ssrc onto it, so somebody whose picture is not being received right
+ * now, because of last-N or a hidden window or audio-only mode, has a screenshare participant and no screenshare
+ * track. Anything really asking "is this person sharing", rather than "have I got their picture", wants this one.
+ *
+ * @param {(Function|Object)} stateful - The (whole) redux state, or redux's {@code getState} function to be used to
+ * retrieve the state features/base/participants.
+ * @param {string} ownerId - The ID of the participant doing the sharing.
+ * @returns {(string|undefined)}
+ */
+export function getRemoteScreenshareParticipantId(stateful: IStateful, ownerId: string) {
+    const { sortedRemoteVirtualScreenshareParticipants } = toState(stateful)['features/base/participants'];
+
+    for (const id of sortedRemoteVirtualScreenshareParticipants.keys()) {
+        if (getVirtualScreenshareParticipantOwnerId(id) === ownerId) {
+            return id;
+        }
+    }
+
+    return undefined;
+}
+
+/**
  * Normalizes a display name so then no invalid values (padding, length...etc)
  * can be set.
  *

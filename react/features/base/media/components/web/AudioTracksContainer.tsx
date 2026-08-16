@@ -3,7 +3,7 @@ import { connect } from 'react-redux';
 
 import { IReduxState } from '../../../../app/types';
 import { isScreenshareAudioSourceName } from '../../../../screen-share/functions';
-import { getVirtualScreenshareParticipantByOwnerId } from '../../../participants/functions';
+import { getRemoteScreenshareParticipantId } from '../../../participants/functions';
 import { ITrack } from '../../../tracks/types';
 import { MEDIA_TYPE } from '../../constants';
 
@@ -89,12 +89,12 @@ function _mapStateToProps(state: IReduxState) {
                 //
                 // A share of sound with no picture has no screenshare participant to belong to, and falls back to
                 // its sender: one volume for both, as it was, rather than a slider with nothing behind it.
-                const screenshare = isScreenshareAudioSourceName(track.jitsiTrack?.getSourceName())
-                    ? getVirtualScreenshareParticipantByOwnerId(state, track.participantId)
+                const screenshareId = isScreenshareAudioSourceName(track.jitsiTrack?.getSourceName())
+                    ? getRemoteScreenshareParticipantId(state, track.participantId)
                     : undefined;
 
                 return {
-                    participantId: screenshare?.id ?? track.participantId,
+                    participantId: screenshareId ?? track.participantId,
                     track
                 };
             })

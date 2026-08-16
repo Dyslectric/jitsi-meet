@@ -129,6 +129,12 @@ async function _publishDesktopAudio(desktopAudioTrack: any, state: IReduxState):
             // has said so. Fall through to the mixer rather than share in silence: worse sound, but sound.
             logger.error('Could not publish screen share audio as its own source; mixing it instead.', error);
         }
+    } else {
+        // The remaining way to reach the mixer, and it used to be the silent one. Everything below behaves exactly
+        // as it would for a deployment that cannot publish a second source, so without this the two are
+        // indistinguishable from the outside: no slider at the far end, sound on the sharer's microphone, and
+        // nothing said about why.
+        logger.warn('No conference to publish screen share audio to; mixing it into the microphone instead.');
     }
 
     if (localAudio) {
@@ -275,7 +281,14 @@ async function _toggleScreenSharing(
             // Noise suppression doesn't work with desktop audio because we can't chain track effects yet, disable it
             // first. We need to to wait for the effect to clear first or it might interfere with the audio mixer.
             await dispatch(setNoiseSuppressionEnabled(false));
-            await _publishDesktopAudio(desktopAudioTrack, state);
+
+            // Read now, not from the snapshot at the top of this function. Between the two sits the capture, which
+            // waits on a person choosing a window — and on the desktop app, on their answer to whether its sound
+            // should travel too, which is allowed to take twelve seconds. The conference, the microphone and the
+            // effect on it can all have been replaced by the time the answer arrives, and every one of them is read
+            // below: an old microphone gets the mixer nobody hears, and a conference read as absent takes the branch
+            // that publishes nothing.
+            await _publishDesktopAudio(desktopAudioTrack, getState());
             dispatch(setScreenshareAudioTrack(desktopAudioTrack));
 
             // Handle the case where screen share was stopped from the browsers 'screen share in progress' window.

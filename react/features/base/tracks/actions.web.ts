@@ -9,7 +9,12 @@ import { showErrorNotification, showNotification } from '../../notifications/act
 import { NOTIFICATION_TIMEOUT_TYPE } from '../../notifications/constants';
 import { stopReceiver } from '../../remote-control/actions';
 import { setScreenAudioShareState, setScreenshareAudioTrack } from '../../screen-share/actions';
-import { isAudioOnlySharing, isScreenVideoShared, isSeparateScreenshareAudioEnabled } from '../../screen-share/functions';
+import {
+    getScreenshareAudioSourceName,
+    isAudioOnlySharing,
+    isScreenVideoShared,
+    isSeparateScreenshareAudioEnabled
+} from '../../screen-share/functions';
 import { toggleScreenshotCaptureSummary } from '../../screenshot-capture/actions';
 import { isScreenshotCaptureEnabled } from '../../screenshot-capture/functions';
 import { setAudioSettings } from '../../settings/actions.web';
@@ -109,9 +114,14 @@ async function _publishDesktopAudio(desktopAudioTrack: any, state: IReduxState):
     const localAudio = getLocalJitsiAudioTrack(state);
     const conference = getCurrentConference(state);
 
-    if (isSeparateScreenshareAudioEnabled(state)) {
+    if (isSeparateScreenshareAudioEnabled(state) && conference) {
         try {
-            await conference?.addTrack(desktopAudioTrack);
+            // Named here rather than by the library, which counts the endpoint's audio sources and would call this
+            // -a0 for anyone sharing without a microphone — the name a microphone goes out under, and the one the
+            // far end reads as "this is a person talking". See getScreenshareAudioSourceName.
+            desktopAudioTrack.setSourceName(getScreenshareAudioSourceName(conference.myUserId()));
+
+            await conference.addTrack(desktopAudioTrack);
 
             return;
         } catch (error) {

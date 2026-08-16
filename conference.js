@@ -158,7 +158,7 @@ import { suspendDetected } from './react/features/power-monitor/actions';
 import { initPrejoin, isPrejoinPageVisible } from './react/features/prejoin/functions';
 import { disableReceiver, stopReceiver } from './react/features/remote-control/actions';
 import { setScreenAudioShareState } from './react/features/screen-share/actions.web';
-import { isScreenAudioShared, isSeparateScreenshareAudioEnabled } from './react/features/screen-share/functions';
+import { isScreenAudioShared, isScreenshareAudioItsOwnSource } from './react/features/screen-share/functions';
 import { toggleScreenshotCaptureSummary } from './react/features/screenshot-capture/actions';
 import { setAudioSettings } from './react/features/settings/actions.web';
 import { AudioMixerEffect } from './react/features/stream-effects/audio-mixer/AudioMixerEffect';
@@ -691,7 +691,7 @@ export default {
         // microphone for another is none of its business. Without this, changing input device mid-share would take
         // the published source off the room and mix it into the new microphone — quietly undoing the separation, and
         // only for the people who touched their audio settings while sharing.
-        if (isSeparateScreenshareAudioEnabled(state)) {
+        if (isScreenshareAudioItsOwnSource(state)) {
             return;
         }
 

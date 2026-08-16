@@ -1,4 +1,5 @@
 import { IReduxState } from '../app/types';
+import { getCurrentConference } from '../base/conference/functions';
 import { isWindows } from '../base/environment/environment';
 import { isMobileBrowser } from '../base/environment/utils';
 import { browser } from '../base/lib-jitsi-meet';
@@ -37,7 +38,7 @@ export function isScreenAudioSupported() {
 }
 
 /**
- * Whether the sound of a screen share travels as a source of its own rather than mixed into the microphone.
+ * Whether the sound of a screen share is on the room as a source of its own, rather than mixed into the microphone.
  *
  * Upstream mixes the two together with an AudioMixerEffect, and what is wrong with sharing audio follows from that
  * one decision. The pair arrive at a listener as a single track, so the shared application cannot be turned down
@@ -45,15 +46,20 @@ export function isScreenAudioSupported() {
  * microphone carrying something that has to be unpicked from it again when the share ends — and a stop that does not
  * finish unpicking leaves the shared sound on their microphone for the rest of the call.
  *
- * The flag is lib-jitsi-meet's own, read here rather than mirrored: it is what opens the guard in
- * JitsiConference.addTrack against a second audio source, so a deployment that has not set it would have this code
- * publishing a track the library refuses. One flag, so the two cannot disagree.
+ * Answered by asking the conference what it is sending, and not by reading the config flag that decides whether it
+ * may. A flag is a prediction, and this had one: `config.testing.allowMultipleTracks` read false while the share
+ * started and true from the console a minute later, so every share silently took the mixing branch while every probe
+ * said it should not have. What the callers actually want to know is whether the sound is already going out on its
+ * own, and the conference's own list of local tracks cannot be wrong about that.
  *
  * @param {IReduxState} state - The state of the application.
  * @returns {boolean}
  */
-export function isSeparateScreenshareAudioEnabled(state: IReduxState) {
-    return Boolean(state['features/base/config'].testing?.allowMultipleTracks);
+export function isScreenshareAudioItsOwnSource(state: IReduxState) {
+    const { desktopAudioTrack } = state['features/screen-share'];
+
+    return Boolean(desktopAudioTrack
+        && getCurrentConference(state)?.getLocalTracks(MEDIA_TYPE.AUDIO)?.includes(desktopAudioTrack));
 }
 
 /**

@@ -9,12 +9,7 @@ import { showErrorNotification, showNotification } from '../../notifications/act
 import { NOTIFICATION_TIMEOUT_TYPE } from '../../notifications/constants';
 import { stopReceiver } from '../../remote-control/actions';
 import { setScreenAudioShareState, setScreenshareAudioTrack } from '../../screen-share/actions';
-import {
-    getScreenshareAudioSourceName,
-    isAudioOnlySharing,
-    isScreenVideoShared,
-    isSeparateScreenshareAudioEnabled
-} from '../../screen-share/functions';
+import { getScreenshareAudioSourceName, isAudioOnlySharing, isScreenVideoShared } from '../../screen-share/functions';
 import { toggleScreenshotCaptureSummary } from '../../screenshot-capture/actions';
 import { isScreenshotCaptureEnabled } from '../../screenshot-capture/functions';
 import { setAudioSettings } from '../../settings/actions.web';
@@ -95,9 +90,14 @@ export function toggleScreensharing(
  * Sends the sound captured with a screen share, as a source of its own where the deployment allows it and mixed into
  * the microphone where it does not.
  *
- * See isSeparateScreenshareAudioEnabled for why the separate source is worth having. The mixing branch is upstream's
- * and stays for a deployment that has not turned the flag on — losing the sound of every share would be a poor way to
- * discover a missing line of config.
+ * See isScreenshareAudioItsOwnSource for why the separate source is worth having. The mixing branch is upstream's and
+ * stays for a deployment that has not opened lib-jitsi-meet's guard against a second audio source — losing the sound
+ * of every share would be a poor way to discover a missing line of config.
+ *
+ * Which of the two happens is decided by asking, not by predicting. This used to check the config flag first and only
+ * call addTrack if it liked the answer, and that check read false while the flag was demonstrably set, so every share
+ * mixed and said nothing about it — the silent branch of a fallback whose whole job is to be noisy. The library holds
+ * the only opinion that matters here, so it is the one consulted: attempt the source, and mix if it refuses.
  *
  * A published track is deliberately NOT dispatched into features/base/tracks. Everything that asks that store for
  * "the local audio track" — the microphone button, the mute state, the level meter — takes the first one it finds, so
@@ -114,7 +114,7 @@ async function _publishDesktopAudio(desktopAudioTrack: any, state: IReduxState):
     const localAudio = getLocalJitsiAudioTrack(state);
     const conference = getCurrentConference(state);
 
-    if (isSeparateScreenshareAudioEnabled(state) && conference) {
+    if (conference) {
         try {
             // Named here rather than by the library, which counts the endpoint's audio sources and would call this
             // -a0 for anyone sharing without a microphone — the name a microphone goes out under, and the one the
@@ -125,8 +125,8 @@ async function _publishDesktopAudio(desktopAudioTrack: any, state: IReduxState):
 
             return;
         } catch (error) {
-            // The library refused the second source, which in practice means the flag reached this half of the app
-            // and not the other. Fall through to the mixer rather than share in silence: worse sound, but sound.
+            // Ordinarily this is a deployment that has not set config.testing.allowMultipleTracks, and the library
+            // has said so. Fall through to the mixer rather than share in silence: worse sound, but sound.
             logger.error('Could not publish screen share audio as its own source; mixing it instead.', error);
         }
     }

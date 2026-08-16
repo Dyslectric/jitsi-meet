@@ -24,6 +24,7 @@ import { INotificationProps } from '../../notifications/types';
 import { hasDisplayName } from '../../prejoin/utils';
 import { stopLocalVideoRecording } from '../../recording/actions.any';
 import LocalRecordingManager from '../../recording/components/Recording/LocalRecordingManager';
+import { isScreenshareAudioItsOwnSource } from '../../screen-share/functions';
 import { AudioMixerEffect } from '../../stream-effects/audio-mixer/AudioMixerEffect';
 import { iAmVisitor } from '../../visitors/functions';
 import { configWillLoad, overwriteConfig, setConfig } from '../config/actions';
@@ -765,7 +766,14 @@ async function _trackAddedOrRemoved(store: IStore, next: Function, action: AnyAc
 
                     // If the user is sharing their screen and has a desktop audio track, we need to replace that with
                     // the audio mixer effect so that the desktop audio is mixed in with the microphone audio.
-                    if (typeof APP !== 'undefined' && desktopAudioTrack && track.mediaType === MEDIA_TYPE.AUDIO) {
+                    //
+                    // Unless the share's sound is already on the room as a source of its own, in which case a
+                    // microphone arriving is none of its business. Without this, anything that gives the user a new
+                    // audio track mid-share — changing input device, a device list that reshuffles under a capture
+                    // starting up — takes the published source off the room and welds it to the new microphone
+                    // instead: the separation undone, and no slider on the far end to say so.
+                    if (typeof APP !== 'undefined' && desktopAudioTrack && track.mediaType === MEDIA_TYPE.AUDIO
+                            && !isScreenshareAudioItsOwnSource(state)) {
                         await conference.replaceTrack(desktopAudioTrack, null);
                         const audioMixerEffect = new AudioMixerEffect(desktopAudioTrack);
 

@@ -1,4 +1,5 @@
 import { IReduxState } from '../../app/types';
+import { SCREENSHARE_DEFAULT_FRAME_RATE, SCREENSHARE_FRAME_RATES } from '../../screen-share/constants';
 import { IStateful } from '../app/types';
 import { toState } from '../redux/functions';
 
@@ -213,4 +214,34 @@ function _getUserSelectedDeviceId(options: {
     });
 
     return foundMatchBasedOnLabel?.deviceId;
+}
+
+/**
+ * The frame rate a screen share will be captured at: the one chosen from the
+ * share button's menu, or the deployment's own default when nothing has been
+ * chosen.
+ *
+ * Falls back through config's desktopSharingFrameRate rather than to a constant,
+ * so a deployment that has set a rate keeps deciding for anyone who has not
+ * touched the menu, and only the library's default is reached when neither has
+ * an opinion.
+ *
+ * A rate no longer offered -- a stored choice from an older list -- is snapped
+ * to the nearest one that is, so the menu can never open with nothing selected.
+ *
+ * @param {IReduxState} state - The state of the application.
+ * @returns {number}
+ */
+export function getScreenshareFrameRate(state: IReduxState) {
+    const { screenshareFrameRate } = state['features/base/settings'];
+    const configured = state['features/base/config'].desktopSharingFrameRate?.max;
+    const rate = screenshareFrameRate ?? configured ?? SCREENSHARE_DEFAULT_FRAME_RATE;
+
+    if (SCREENSHARE_FRAME_RATES.some(option => option.frameRate === rate)) {
+        return rate;
+    }
+
+    return SCREENSHARE_FRAME_RATES
+        .map(option => option.frameRate)
+        .reduce((best, option) => (Math.abs(option - rate) < Math.abs(best - rate) ? option : best));
 }

@@ -27,6 +27,7 @@ import {
     SET_AUDIO_SETTINGS,
     SET_AUDIO_SETTINGS_VISIBILITY,
     SET_PREVIEW_AUDIO_TRACK,
+    SET_SCREENSHARE_SETTINGS_VISIBILITY,
     SET_VIDEO_SETTINGS_VISIBILITY
 } from './actionTypes';
 import LogoutDialog from './components/web/LogoutDialog';
@@ -117,6 +118,19 @@ export function openSettingsDialog(defaultTab?: string, isDisplayedOnWelcomePage
 function setAudioSettingsVisibility(value: boolean) {
     return {
         type: SET_AUDIO_SETTINGS_VISIBILITY,
+        value
+    };
+}
+
+/**
+ * Sets the visibility of the screenshare settings.
+ *
+ * @param {boolean} value - The new value.
+ * @returns {Function}
+ */
+function setScreenshareSettingsVisibility(value: boolean) {
+    return {
+        type: SET_SCREENSHARE_SETTINGS_VISIBILITY,
         value
     };
 }
@@ -296,6 +310,19 @@ export function toggleAudioSettings() {
         const value = getState()['features/settings'].audioSettingsVisible;
 
         dispatch(setAudioSettingsVisibility(!value));
+    };
+}
+
+/**
+ * Toggles the visibility of the video settings.
+ *
+ * @returns {void}
+ */
+export function toggleScreenshareSettings() {
+    return (dispatch: IStore['dispatch'], getState: IStore['getState']) => {
+        const value = getState()['features/settings'].screenshareSettingsVisible;
+
+        dispatch(setScreenshareSettingsVisibility(!value));
     };
 }
 

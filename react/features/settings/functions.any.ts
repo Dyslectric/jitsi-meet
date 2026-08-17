@@ -283,6 +283,16 @@ export function getAudioSettingsVisibility(state: IReduxState) {
 }
 
 /**
+ * Returns the visibility state of the screenshare settings.
+ *
+ * @param {Object} state - The state of the application.
+ * @returns {boolean}
+ */
+export function getScreenshareSettingsVisibility(state: IReduxState) {
+    return state['features/settings'].screenshareSettingsVisible;
+}
+
+/**
  * Returns the visibility state of the video settings.
  *
  * @param {Object} state - The state of the application.

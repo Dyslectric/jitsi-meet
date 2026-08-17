@@ -1,4 +1,6 @@
 import { IStore } from '../../app/types';
+import { SCREENSHARE_DEFAULT_FRAME_RATE } from '../../screen-share/constants';
+import { audioSettingsForCapture } from '../../settings/audioProcessing';
 import { IStateful } from '../app/types';
 import { isAdvancedAudioSettingsEnabled } from '../config/functions.any';
 import { isMobileBrowser } from '../environment/utils';
@@ -9,13 +11,12 @@ import { getStartWithAudioMuted } from '../media/functions';
 import { IGUMPendingState } from '../media/types';
 import { toState } from '../redux/functions';
 import {
+    getScreenshareFrameRate,
     getUserSelectedCameraDeviceId,
     getUserSelectedMicDeviceId
 } from '../settings/functions.web';
 import { IAudioSettings } from '../settings/reducer';
 import { getJitsiMeetGlobalNSConnectionTimes } from '../util/helpers';
-
-import { audioSettingsForCapture } from '../../settings/audioProcessing';
 
 import { getCameraFacingMode, getLocalJitsiAudioTrack, getLocalJitsiAudioTrackSettings } from './functions.any';
 import loadEffects from './loadEffects';
@@ -62,10 +63,17 @@ export function createLocalTracksF(options: ITrackOptions = {}, store?: IStore, 
         micDeviceId = getUserSelectedMicDeviceId(state);
     }
 
-    const {
-        desktopSharingFrameRate,
-        resolution
-    } = state['features/base/config'];
+    const { resolution } = state['features/base/config'];
+
+    // The rate chosen from the share button's menu rather than config's alone --
+    // the selector falls back to config, and to the library's default, for
+    // anyone who has not chosen. Read here because capture is where a frame rate
+    // is decided: the constraint is applied as the track is created, and no
+    // later change reaches a share that is already running.
+    const desktopSharingFrameRate = {
+        min: state['features/base/config'].desktopSharingFrameRate?.min ?? SCREENSHARE_DEFAULT_FRAME_RATE,
+        max: getScreenshareFrameRate(state)
+    };
 
     const constraints = options.constraints ?? state['features/base/config'].constraints ?? {};
 

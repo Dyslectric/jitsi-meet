@@ -26,6 +26,7 @@ const DEFAULT_STATE: ISettingsState = {
     localFlipX: true,
     maxStageParticipants: 1,
     micDeviceId: undefined,
+    screenshareFrameRate: undefined,
     serverURL: undefined,
     hideShareAudioHelper: false,
     showSubtitlesOnStage: false,
@@ -73,6 +74,13 @@ export interface ISettingsState {
     maxStageParticipants?: number;
     micDeviceId?: string | boolean;
     previewAudioTrack?: any | null;
+    screenshareFrameRate?: number;
+
+    // Not persisted, and not in DEFAULT_STATE for that reason -- the filter that
+    // decides what is written to storage is built from that object's keys. It is
+    // declared here because app/types gives 'features/settings' this same
+    // interface, which is where the popup visibility flags all live.
+    screenshareSettingsVisible?: boolean;
     serverURL?: string;
     showSubtitlesOnStage?: boolean;
     soundsIncomingMessage?: boolean;

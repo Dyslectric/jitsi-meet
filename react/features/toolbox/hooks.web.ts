@@ -72,7 +72,7 @@ import CustomOptionButton from './components/web/CustomOptionButton';
 import FullscreenButton from './components/web/FullscreenButton';
 import LinkToSalesforceButton from './components/web/LinkToSalesforceButton';
 import ProfileButton from './components/web/ProfileButton';
-import ShareDesktopButton from './components/web/ShareDesktopButton';
+import ScreenshareSettingsButton from './components/web/ScreenshareSettingsButton';
 import ToggleCameraButton from './components/web/ToggleCameraButton';
 import VideoSettingsButton from './components/web/VideoSettingsButton';
 import { isButtonEnabled, isDesktopShareButtonDisabled } from './functions.web';
@@ -99,7 +99,7 @@ const profile = {
 
 const desktop = {
     key: 'desktop',
-    Content: ShareDesktopButton,
+    Content: ScreenshareSettingsButton,
     group: 2
 };
 

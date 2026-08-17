@@ -1235,6 +1235,13 @@
             "welcome": "Consider using a more unique meeting name, or pick one of the suggestions."
         }
     },
+    "screenshareSettings": {
+        "appliesToNextShare": "Takes effect the next time you share.",
+        "balanced": "Balanced — 30 fps",
+        "detailed": "Detailed — 5 fps, sharpest text",
+        "smooth": "Smooth — up to 60 fps",
+        "title": "Screen share settings"
+    },
     "settings": {
         "audioProcessing": "Clean up microphone audio",
         "audio": "Audio",
@@ -1576,6 +1583,7 @@
         "tileViewToggle": "Toggle tile view",
         "toggleCamera": "Toggle camera",
         "unmute": "Unmute microphone",
+        "screenshareSettings": "Screen share settings",
         "videoSettings": "Video settings",
         "videomute": "Stop camera",
         "videomuteGUMPending": "Connecting your camera",
